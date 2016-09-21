@@ -1,24 +1,27 @@
-# This is a template for a Python scraper on morph.io (https://morph.io)
-# including some code snippets below that you should find helpful
+# -*- coding: utf-8 -*-
 
-# import scraperwiki
-# import lxml.html
-#
-# # Read in a page
-# html = scraperwiki.scrape("http://foo.com")
-#
-# # Find something on the page using css selectors
-# root = lxml.html.fromstring(html)
-# root.cssselect("div[align='left']")
-#
-# # Write out to the sqlite database using scraperwiki library
-# scraperwiki.sqlite.save(unique_keys=['name'], data={"name": "susan", "occupation": "software developer"})
-#
-# # An arbitrary query against the database
-# scraperwiki.sql.select("* from data where 'name'='peter'")
+import scraperwiki
+import lxml.html
+import requests
+import urlparse
+from dateutil import parser
 
-# You don't have to do things with the ScraperWiki and lxml libraries.
-# You can use whatever libraries you want: https://morph.io/documentation/python
-# All that matters is that your final data is written to an SQLite database
-# called "data.sqlite" in the current working directory which has at least a table
-# called "data".
+BASE_URL = "http://www.kopavogur.is/stjornsyslan/fundargerdir/"
+DATA_URL = "http://www.kopavogur.is/stjornsyslan/fundargerdir/searchmeetings.aspx"
+
+r = requests.get(DATA_URL)
+root = lxml.html.fromstring(r.text)
+items = root.xpath("//span[@id='l_Content']/table/tr")
+
+data = []
+
+for item in items[1:]:
+    meeting = {}
+    meeting["titill"] = item[1].text
+    meeting["url"] = urlparse.urljoin(BASE_URL, item[0][0].attrib["href"])
+    meeting["dagsetning"] = item[2].text
+    meeting["date"] = parser.parse(item[2].text)
+    meeting["nefnd"] = item[0][0].text
+    data.append(meeting)
+scraperwiki.sqlite.save(unique_keys=['url'],
+                        data=data)
